@@ -1,9 +1,11 @@
-;;; orgalist.el --- Manage Org lists in non-Org buffers  -*- lexical-binding: t; -*-
+;;; orgalist.el --- Manage Org-like lists in non-Org buffers  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2017  Nicolas Goaziou
+;; Copyright (C) 2017, 2018  Free Software Foundation, Inc.
 
 ;; Author: Nicolas Goaziou <mail@nicolasgoaziou.fr>
+;; Maintainer: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Keywords: convenience
+;; Version: 1.0
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,22 +22,28 @@
 
 ;;; Commentary:
 
-;; This library provides Org mode's plain lists in non-Org buffers.
+;; This library provides Org mode's plain lists in non-Org buffers, as
+;; a minor mode.
 
 ;; More specifically, it supports syntax for numbered, unnumbered,
-;; description items, checkboxes, and counter cookies.
+;; description items, checkboxes, and counter cookies.  See (info
+;; "(org) Plain Lists") and (info "(org) Checkboxes") for details
+;; about the syntax of such constructs.
 
-;; Besides, the following features are supported:
+;; The following features are supported:
 
-;; - Navigation (M-<up>, M-<down>)
-;; - Indentation (M-<left>, M-<right>, M-S-<left>, M-S-<right>, TAB)
-;; - Re-ordering (M-S-<up>, M-S-<down>)
-;; - Item insertion (M-RET)
+;; - Item insertion (M-<RET>)
+;; - Navigation (M-<UP>, M-<DOWN>)
+;; - Indentation (M-<LEFT>, M-<RIGHT>, M-S-<LEFT>, M-S-<RIGHT>, <TAB>)
+;; - Re-ordering (M-S-<UP>, M-S-<DOWN>)
 ;; - Toggling checkboxes (C-c C-c)
 ;; - Cycling bullets (C-c -)
 ;; - Sorting items (C-c ^)
 ;; - Filling items (M-q)
 ;; - Auto filling (when Auto Fill mode is enabled)
+
+;; Note that the bindings above are only available when point is in an
+;; item (for M-<RET>, M-<UP>, M-<DOWN> and M-q) or exactly at an item.
 
 ;; The library also implements radio lists:
 
@@ -70,7 +78,6 @@
 ;; LaTeX list in-between the "BEGIN RECEIVE" and "END RECEIVE" marker
 ;; lines.
 
-
 ;;; Code:
 
 (require 'easymenu)
@@ -78,8 +85,9 @@
 
 (defvar mail-header-separator)
 (defvar message-signature-separator)
+(defvar orgalist-mode)
 
-
+
 ;;; Configuration variables
 
 (defgroup orgalist nil
@@ -133,7 +141,7 @@ list, obtained by prompting the user."
           (list (symbol :tag "Major mode")
                 (string :tag "Format"))))
 
-
+
 ;;; Mode specific context functions
 
 (defun orgalist-message-mode-context ()
@@ -156,7 +164,7 @@ Otherwise, return nil."
            nil)
           (t nil))))
 
-
+
 ;;; Internal variables
 
 (defvar orgalist--menu nil
@@ -177,7 +185,10 @@ group 4: description tag")
 (defvar-local orgalist--cycling-state nil
   "Current cycling state when cycling indentation.")
 
+(defvar-local orgalist--last-advised-function nil
+  "Function currently advised for Auto fill mode.")
 
+
 ;;; Internal functions
 
 (defun orgalist--call-in-item (fun pos)
@@ -426,6 +437,9 @@ Assume point is at an item."
       struct)))
 
 (defun orgalist--goto-following-item (previous?)
+  "Move point to next item in current list.
+When PREVIOUS? is non-nil, move it to the previous item instead.
+Throw an error if the move is not possible."
   (let* ((struct (orgalist--struct))
          (prevs (org-list-prevs-alist struct))
          (next (funcall (if previous? #'org-list-get-prev-item
@@ -436,6 +450,9 @@ Assume point is at an item."
     (goto-char next)))
 
 (defun orgalist--move-item (up?)
+  "Move item at point down.
+When UP? is non-nil, move it up instead.  Throw an error if the
+move is not possible."
   (let* ((col (current-column))
          (item (line-beginning-position))
          (struct (orgalist--struct))
@@ -462,6 +479,20 @@ Assume point is at an item."
       (when item?
         (orgalist--call-in-item normal-auto-fill-function item?)))))
 
+(defun orgalist--set-auto-fill ()
+  "Add advice to current Auto fill function.
+This function is meant to be used as a post command hook so it
+can periodically check changes to variable ‘auto-fill-function’."
+  (when (and auto-fill-function
+             (not (advice-function-member-p #'orgalist--auto-fill
+                                            auto-fill-function)))
+    (when orgalist--last-advised-function
+      (remove-function orgalist--last-advised-function #'orgalist--auto-fill))
+    (setq orgalist--last-advised-function auto-fill-function)
+    (add-function :before-until
+                  (local 'auto-fill-function)
+                  #'orgalist--auto-fill)))
+
 (defun orgalist--while-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
@@ -470,7 +501,7 @@ Assume point is at an item."
   "Return CMD when point is in a list item."
   (when (orgalist--in-item-p) cmd))
 
-
+
 ;;; Bindings and menu
 
 (defconst orgalist--maybe-fill
@@ -555,7 +586,7 @@ Assume point is at an item."
     "---"
     ["Sort items" orgalist-sort-items :active (orgalist--at-item-p)]))
 
-
+
 ;;; Minor mode definition
 
 (define-minor-mode orgalist-mode
@@ -589,11 +620,13 @@ TAB             `orgalist-cycle-indentation'"
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
-    (add-function :before-until normal-auto-fill-function #'orgalist--auto-fill))
+    (add-hook 'post-command-hook #'orgalist--set-auto-fill nil t)
+    (orgalist--set-auto-fill))
    (t
-    (remove-function normal-auto-fill-function #'orgalist--auto-fill))))
+    (remove-hook 'post-command-hook #'orgalist--set-auto-fill t)
+    (remove-function orgalist--last-advised-function #'orgalist--auto-fill))))
 
-
+
 ;;; Public functions
 
 ;;;###autoload
