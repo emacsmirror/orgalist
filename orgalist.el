@@ -5,6 +5,7 @@
 ;; Author: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Maintainer: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Keywords: convenience
+;; Package-Requires: ((emacs "24.4"))
 ;; Version: 1.0
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -548,6 +549,8 @@ can periodically check changes to variable ‘auto-fill-function’."
 
 (defconst orgalist-mode-map
   (let ((map (make-sparse-keymap)))
+    ;; FIXME: Why don't we set fill-(forward-)paragraph-function instead of
+    ;; rebinding M-q?
     (define-key map (kbd "M-q") orgalist--maybe-fill)
     (define-key map (kbd "M-<up>") orgalist--maybe-previous)
     (define-key map (kbd "M-<down>") orgalist--maybe-next)
@@ -561,6 +564,9 @@ can periodically check changes to variable ‘auto-fill-function’."
     (define-key map (kbd "C-c -") orgalist--maybe-cycle-bullet)
     (define-key map (kbd "C-c C-c") orgalist--maybe-check)
     (define-key map (kbd "C-c ^") orgalist--maybe-sort)
+    ;; FIXME: This interacts poorly with other uses of TAB such as
+    ;; doing completion via (setq tab-always-indent 'complete).
+    ;; Maybe we should set indent-line-function instead.
     (define-key map (kbd "TAB") orgalist--maybe-cycle-indentation)
     map))
 
@@ -589,6 +595,7 @@ can periodically check changes to variable ‘auto-fill-function’."
 
 ;;; Minor mode definition
 
+;;;###autoload
 (define-minor-mode orgalist-mode
   "Toggle the minor mode `orgalist-mode'.
 
@@ -629,7 +636,6 @@ TAB             `orgalist-cycle-indentation'"
 
 ;;; Public functions
 
-;;;###autoload
 (defun orgalist-fill-item ()
   "Fill item as a paragraph."
   (interactive)
@@ -637,7 +643,6 @@ TAB             `orgalist-cycle-indentation'"
     (unless item (user-error "Not in a list"))
     (orgalist--call-in-item #'fill-paragraph item)))
 
-;;;###autoload
 (defun orgalist-previous-item ()
   "Move to the beginning of the previous item.
 Throw an error when at first item."
@@ -647,7 +652,6 @@ Throw an error when at first item."
     (goto-char item)
     (orgalist--goto-following-item t)))
 
-;;;###autoload
 (defun orgalist-next-item ()
   "Move to the beginning of the next item.
 Throw an error when at last item."
@@ -657,7 +661,6 @@ Throw an error when at last item."
     (goto-char item)
     (orgalist--goto-following-item nil)))
 
-;;;###autoload
 (defun orgalist-insert-item (&optional checkbox)
   "Insert a new item at the current level.
 
@@ -684,7 +687,6 @@ If CHECKBOX is non-nil, add a checkbox next to the bullet."
                    (match-end 0)))
       (when desc (backward-char 1)))))
 
-;;;###autoload
 (defun orgalist-move-item-down ()
   "Move the item at point down, i.e. swap with following item.
 Sub-items (items with larger indentation) are considered part of
@@ -693,7 +695,6 @@ the item, so this really moves item trees."
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (orgalist--move-item nil))
 
-;;;###autoload
 (defun orgalist-move-item-up ()
   "Move the item at point up, i.e. swap with previous item.
 Sub-items (items with larger indentation) are considered part of
@@ -702,7 +703,6 @@ the item, so this really moves item trees."
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (orgalist--move-item t))
 
-;;;###autoload
 (defun orgalist-cycle-indentation ()
   "Cycle levels of indentation of an empty item.
 The first run indents the item, if applicable.  Subsequent runs
@@ -750,7 +750,6 @@ put back at its original position with its original bullet."
          ((ignore-errors (org-list-indent-item-generic -1 t struct)))
          (t (user-error "Cannot move item")))))))
 
-;;;###autoload
 (defun orgalist-cycle-bullet ()
   "Cycle through the different itemize/enumerate bullets.
 This cycle the entire list level through the sequence:
@@ -783,35 +782,30 @@ This cycle the entire list level through the sequence:
         (org-list-struct-fix-ind struct parents)
         (org-list-struct-apply-struct struct old-struct)))))
 
-;;;###autoload
 (defun orgalist-outdent-item ()
   "Outdent a local list item, but not its children."
   (interactive)
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (org-list-indent-item-generic -1 t (orgalist--struct)))
 
-;;;###autoload
 (defun orgalist-indent-item ()
   "Indent a local list item, but not its children."
   (interactive)
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (org-list-indent-item-generic 1 t (orgalist--struct)))
 
-;;;###autoload
 (defun orgalist-outdent-item-tree ()
   "Outdent a local list item including its children."
   (interactive)
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (org-list-indent-item-generic -1 nil (orgalist--struct)))
 
-;;;###autoload
 (defun orgalist-indent-item-tree ()
   "Indent a local list item including its children."
   (interactive)
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (org-list-indent-item-generic 1 nil (orgalist--struct)))
 
-;;;###autoload
 (defun orgalist-check-item (&optional arg)
   "Toggle the checkbox in the current line.
 
@@ -848,7 +842,8 @@ at point."
           (error "Checkbox blocked because of unchecked box"))
         (org-list-struct-apply-struct struct struct-copy)))))
 
-;;;###autoload
+(defvar org-after-sorting-entries-or-items-hook)
+
 (defun orgalist-sort-items (with-case sorting-type)
   "Sort list items.
 
@@ -877,7 +872,6 @@ Capital letters reverse the sort order."
   (let ((org-after-sorting-entries-or-items-hook nil))
     (org-sort-list with-case sorting-type)))
 
-;;;###autoload
 (defun orgalist-insert-radio-list ()
   "Insert a radio list template appropriate for current major mode."
   (interactive)
@@ -888,7 +882,6 @@ Capital letters reverse the sort order."
     (unless (bolp) (insert "\n"))
     (save-excursion (insert txt))))
 
-;;;###autoload
 (defun orgalist-send-list (&optional maybe)
   "Send a transformed version of this list to the receiver position.
 With argument MAYBE, fail quietly if no transformation is defined
