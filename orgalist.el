@@ -82,6 +82,7 @@
 ;;; Code:
 
 (require 'easymenu)
+(require 'org-macs)
 (require 'org-list)
 
 (defvar mail-header-separator)
