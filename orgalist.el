@@ -499,6 +499,16 @@ can periodically check changes to variable ‘auto-fill-function’."
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
 
+(defun orgalist--while-at-empty-item (cmd)
+  "Return CMD when point is at a list item."
+  (when (and (orgalist--at-item-p)
+             (save-excursion
+               (beginning-of-line)
+               (re-search-forward orgalist--item-re)
+               (skip-chars-forward " \t")
+               (eolp)))
+    cmd))
+
 (defun orgalist--while-in-item (cmd)
   "Return CMD when point is in a list item."
   (when (orgalist--in-item-p) cmd))
@@ -540,7 +550,8 @@ can periodically check changes to variable ‘auto-fill-function’."
   '(menu-item "" orgalist-cycle-bullet :filter orgalist--while-at-item))
 
 (defconst orgalist--maybe-cycle-indentation
-  '(menu-item "" orgalist-cycle-indentation :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-cycle-indentation
+              :filter orgalist--while-at-empty-item))
 
 (defconst orgalist--maybe-check
   '(menu-item "" orgalist-check-item :filter orgalist--while-at-item))
