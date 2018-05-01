@@ -40,11 +40,12 @@
 ;; - Toggling checkboxes (C-c C-c)
 ;; - Cycling bullets (C-c -)
 ;; - Sorting items (C-c ^)
-;; - Filling items (M-q)
-;; - Auto filling (when Auto Fill mode is enabled)
+
+;; The minor mode also supports filling and auto filling, when Auto
+;; Fill mode is enabled.
 
 ;; Note that the bindings above are only available when point is in an
-;; item (for M-<RET>, M-<UP>, M-<DOWN> and M-q) or exactly at an item.
+;; item (for M-<RET>, M-<UP>, M-<DOWN>) or exactly at an item.
 
 ;; The library also implements radio lists:
 
@@ -193,17 +194,19 @@ group 4: description tag")
 
 ;;; Internal functions
 
-(defun orgalist--call-in-item (fun pos)
-  "Call function FUN with buffer narrowed to item starting at POS."
+(defun orgalist--call-in-item (fun pos &rest arguments)
+  "Call function FUN with buffer narrowed to item starting at POS.
+Call function with ARGUMENTS.  Return the value FUN returns."
   (let* ((struct (save-excursion (goto-char pos) (orgalist--struct)))
          (next (or (org-list-has-child-p pos struct)
                    (org-list-get-item-end pos struct)))
          (fill-prefix
-          (make-string (length (org-list-get-bullet pos struct))
+          (make-string (+ (length (org-list-get-bullet pos struct))
+                          (org-list-get-ind pos struct))
                        ?\s)))
     (save-restriction
       (narrow-to-region pos next)
-      (funcall fun))))
+      (apply fun arguments))))
 
 (defun orgalist--boundaries ()
   "Return buffer boundaries, as a cons cell, where lists are acceptable.
@@ -475,11 +478,26 @@ move is not possible."
     (move-to-column col)))
 
 (defun orgalist--auto-fill ()
-  "Auto fill function."
+  "Auto fill function.
+Return nil outside of a list or in a blank line.  This function is
+meant to be used as a piece of advice on `auto-fill-function'."
   (unless (org-match-line "^[ \t]*$")
     (let ((item? (orgalist--in-item-p)))
       (when item?
-        (orgalist--call-in-item normal-auto-fill-function item?)))))
+        (orgalist--call-in-item normal-auto-fill-function item?)
+        t))))
+
+(defun orgalist--fill-item (justify)
+  "Fill item as a paragraph.
+
+If JUSTIFY is non-nil, justify as well.
+
+Return nil outside of a list.  This function is meant to be used
+as a piece of advice on `fill-paragraph-function'."
+  (let ((item? (orgalist--in-item-p)))
+    (when item?
+      (orgalist--call-in-item #'fill-paragraph item? justify)
+      t)))
 
 (defun orgalist--set-auto-fill ()
   "Add advice to current Auto fill function.
@@ -515,9 +533,6 @@ can periodically check changes to variable ‘auto-fill-function’."
 
 
 ;;; Bindings and menu
-
-(defconst orgalist--maybe-fill
-  '(menu-item "" orgalist-fill-item :filter orgalist--while-in-item))
 
 (defconst orgalist--maybe-previous
   '(menu-item "" orgalist-previous-item :filter orgalist--while-in-item))
@@ -561,9 +576,6 @@ can periodically check changes to variable ‘auto-fill-function’."
 
 (defconst orgalist-mode-map
   (let ((map (make-sparse-keymap)))
-    ;; FIXME: Why don't we set fill-(forward-)paragraph-function instead of
-    ;; rebinding M-q?
-    (define-key map (kbd "M-q") orgalist--maybe-fill)
     (define-key map (kbd "M-<up>") orgalist--maybe-previous)
     (define-key map (kbd "M-<down>") orgalist--maybe-next)
     (define-key map (kbd "M-RET") orgalist--maybe-insert)
@@ -616,7 +628,6 @@ major modes.
 
 key             binding
 ---             -------
-M-q             `orgalist-fill-item'
 M-RET           `orgalist-insert-item'
 M-<up>          `orgalist-previous-item'
 M-<down>        `orgalist-next-item'
@@ -640,20 +651,17 @@ TAB             `orgalist-cycle-indentation'"
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
     (add-hook 'post-command-hook #'orgalist--set-auto-fill nil t)
+    (add-function :before-until
+                  (local 'fill-paragraph-function)
+                  #'orgalist--fill-item)
     (orgalist--set-auto-fill))
    (t
     (remove-hook 'post-command-hook #'orgalist--set-auto-fill t)
-    (remove-function orgalist--last-advised-function #'orgalist--auto-fill))))
+    (remove-function orgalist--last-advised-function #'orgalist--auto-fill)
+    (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item))))
 
 
 ;;; Public functions
-
-(defun orgalist-fill-item ()
-  "Fill item as a paragraph."
-  (interactive)
-  (let ((item (orgalist--in-item-p)))
-    (unless item (user-error "Not in a list"))
-    (orgalist--call-in-item #'fill-paragraph item)))
 
 (defun orgalist-previous-item ()
   "Move to the beginning of the previous item.
