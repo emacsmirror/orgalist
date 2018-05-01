@@ -46,10 +46,11 @@
 ;;     - term :: definition
 ;;     - term 2 :: definition 2
 
-;; To start a list, type `- <SPC>' or `1 . <SPC>', then write the
-;; contents of the item.  To create a new item, use `M-<RET>'.  If it
-;; should be a child of the previous item, use `<TAB>' or `M-<RIGHT>'.
-;; For example, `- <SPC> i t e m M-<RET> <TAB> c h i l d' produces:
+;; To start a list, type "- <SPC>" or "1 . <SPC>", then write the
+;; contents of the item.  To create a new item, use M-<RET>.  If it
+;; should be a child of the previous item, use <TAB> or M-<RIGHT>.
+;; For example, "- <SPC> i t e m M-<RET> <TAB> c h i l d" produces:
+
 ;;     - item
 ;;       - child
 
@@ -516,9 +517,12 @@ as a piece of advice on `fill-paragraph-function'."
 
 (defun orgalist--cycle-indentation ()
   "Cycle levels of indentation of an empty item.
+
 The first run indents the item, if applicable.  Subsequent runs
-outdent it at meaningful levels in the list.  When done, item is
-put back at its original position with its original bullet."
+outdent it at meaningful levels in the list.
+
+This function is meant to be used as a piece of advice on
+`indent-line-function'."
   (when (orgalist--at-item-p)
     (let ((struct (orgalist--struct)))
       (if (>= (progn (org-match-line orgalist--item-re) (match-end 0))
@@ -625,7 +629,7 @@ put back at its original position with its original bullet."
     ["Insert item" orgalist-insert-item :active (orgalist--in-item-p)]
     "----"
     ["Check item" orgalist-check-item :active (orgalist--at-item-p)]
-    ["Cycle item" orgalist-cycle-bullet :active (orgalist--at-item-p)]
+    ["Cycle bullet" orgalist-cycle-bullet :active (orgalist--at-item-p)]
     "----"
     ["Previous item" orgalist-previous-item :active (orgalist--in-item-p)]
     ["Next item" orgalist-next-item :active (orgalist--in-item-p)]
@@ -633,9 +637,9 @@ put back at its original position with its original bullet."
     ["Move item down" orgalist-move-item-gdown :active (orgalist--at-item-p)]
     "---"
     ["Indent item" orgalist-indent-item :active (orgalist--at-item-p)]
-    ["Indent item tree" orgalist-indent-item-tree :active (orgalist--at-item-p)]
+    ["Indent tree" orgalist-indent-item-tree :active (orgalist--at-item-p)]
     ["Outdent item" orgalist-outdent-item :active (orgalist--at-item-p)]
-    ["Outdent item tree" orgalist-outdent-item-tree :active (orgalist--at-item-p)]
+    ["Outdent tree" orgalist-outdent-item-tree :active (orgalist--at-item-p)]
     "---"
     ["Sort items" orgalist-sort-items :active (orgalist--at-item-p)]))
 
