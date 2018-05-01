@@ -188,9 +188,6 @@ group 4: description tag")
 (defvar-local orgalist--cycling-state nil
   "Current cycling state when cycling indentation.")
 
-(defvar-local orgalist--last-advised-function nil
-  "Function currently advised for Auto fill mode.")
-
 
 ;;; Internal functions
 
@@ -499,20 +496,6 @@ as a piece of advice on `fill-paragraph-function'."
       (orgalist--call-in-item #'fill-paragraph item? justify)
       t)))
 
-(defun orgalist--set-auto-fill ()
-  "Add advice to current Auto fill function.
-This function is meant to be used as a post command hook so it
-can periodically check changes to variable ‘auto-fill-function’."
-  (when (and auto-fill-function
-             (not (advice-function-member-p #'orgalist--auto-fill
-                                            auto-fill-function)))
-    (when orgalist--last-advised-function
-      (remove-function orgalist--last-advised-function #'orgalist--auto-fill))
-    (setq orgalist--last-advised-function auto-fill-function)
-    (add-function :before-until
-                  (local 'auto-fill-function)
-                  #'orgalist--auto-fill)))
-
 (defun orgalist--while-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
@@ -650,14 +633,13 @@ TAB             `orgalist-cycle-indentation'"
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
-    (add-hook 'post-command-hook #'orgalist--set-auto-fill nil t)
+    (add-function :before-until (local 'auto-fill-function)
+                  #'orgalist--auto-fill)
     (add-function :before-until
                   (local 'fill-paragraph-function)
-                  #'orgalist--fill-item)
-    (orgalist--set-auto-fill))
+                  #'orgalist--fill-item))
    (t
-    (remove-hook 'post-command-hook #'orgalist--set-auto-fill t)
-    (remove-function orgalist--last-advised-function #'orgalist--auto-fill)
+    (remove-function (local 'auto-fill-function) #'orgalist--auto-fill)
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item))))
 
 
