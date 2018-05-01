@@ -939,3 +939,7 @@ for this list."
 
 (provide 'orgalist)
 ;;; orgalist.el ends here
+
+;; Local Variables:
+;; sentence-end-double-space: t
+;; End:
