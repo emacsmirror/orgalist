@@ -213,13 +213,6 @@ Return nil if Orgalist mode is not active."
          (or (and (functionp f) (funcall f))
              (cons (point-min) (point-max))))))
 
-(defun orgalist--indentation ()
-  "Return current line's indentation."
-  (save-excursion
-    (beginning-of-line)
-    (skip-chars-forward "[ \t]")
-    (current-column)))
-
 (defun orgalist--at-item-p ()
   "Non-nil if point is at an item."
   (and (orgalist--boundaries)            ;check context
@@ -238,7 +231,7 @@ Return nil if Orgalist mode is not active."
               ;; Indentation isn't meaningful when point starts at an
               ;; empty line .
               (ind-ref (if (looking-at-p "^[ \t]*$") 10000
-                         (orgalist--indentation))))
+                         (current-indentation))))
           (if (looking-at orgalist--item-re) (point)
             ;; Detect if cursor in the middle of blank lines after a list.
             (let ((end-bounds nil))
@@ -250,7 +243,7 @@ Return nil if Orgalist mode is not active."
             ;; Look for an item, less indented that reference line.
             (catch 'exit
               (while t
-                (let ((ind (orgalist--indentation)))
+                (let ((ind (current-indentation)))
                   (cond
                    ;; This is exactly what we want.
                    ((and (looking-at orgalist--item-re) (< ind ind-ref))
@@ -306,7 +299,7 @@ Assume point is at an item."
     (beginning-of-line)
     (pcase-let* ((`(,lim-up . ,lim-down) (orgalist--boundaries))
                  (text-min-ind 10000)
-                 (beg-cell (cons (point) (orgalist--indentation)))
+                 (beg-cell (cons (point) (current-indentation)))
                  (itm-lst nil)
                  (itm-lst-2 nil)
                  (end-lst nil)
@@ -336,7 +329,7 @@ Assume point is at an item."
       (save-excursion
         (catch 'exit
           (while t
-            (let ((ind (orgalist--indentation)))
+            (let ((ind (current-indentation)))
               (cond
                ((<= (point) lim-up)
                 ;; At upward limit: if we ended at an item, store it,
@@ -388,7 +381,7 @@ Assume point is at an item."
       ;; position of items in END-LST-2.
       (catch 'exit
         (while t
-          (let ((ind (orgalist--indentation)))
+          (let ((ind (current-indentation)))
             (cond
              ((>= (point) lim-down)
               ;; At downward limit: this is de facto the end of the
