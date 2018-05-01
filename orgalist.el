@@ -496,19 +496,49 @@ as a piece of advice on `fill-paragraph-function'."
       (orgalist--call-in-item #'fill-paragraph item? justify)
       t)))
 
+(defun orgalist--cycle-indentation ()
+  "Cycle levels of indentation of an empty item.
+The first run indents the item, if applicable.  Subsequent runs
+outdent it at meaningful levels in the list.  When done, item is
+put back at its original position with its original bullet."
+  (when (orgalist--at-item-p)
+    (let ((struct (orgalist--struct)))
+      (if (>= (progn (org-match-line orgalist--item-re) (match-end 0))
+              (save-excursion
+                (goto-char (org-list-get-item-end
+                            (line-beginning-position) struct))
+                (skip-chars-backward " \r\t\n")
+                (point)))
+          ;; If the item is not empty, do not indent.
+          'noindent
+        (let ((ind (org-list-get-ind (line-beginning-position) struct))
+              (bullet (org-trim (buffer-substring (line-beginning-position)
+                                                  (line-end-position)))))
+          (setq this-command 'orgalist--cycle-indentation)
+          ;; When in the middle of the cycle, try to outdent first.  If
+          ;; it fails, and point is still at initial position, indent.
+          ;; Else, re-create it at its original position.
+          (if (eq last-command 'orgalist--cycle-indentation)
+              (cond
+               ((ignore-errors (org-list-indent-item-generic -1 t struct)))
+               ((and (= ind (car orgalist--cycling-state))
+                     (ignore-errors (org-list-indent-item-generic 1 t struct))))
+               (t (delete-region (line-beginning-position) (line-end-position))
+                  (indent-to-column (car orgalist--cycling-state))
+                  (insert (cdr orgalist--cycling-state) " ")
+                  ;; Break cycle.
+                  (setq this-command 'identity)))
+            ;; If a cycle is starting, remember indentation and bullet,
+            ;; then try to indent.  If it fails, try to outdent.
+            (setq orgalist--cycling-state (cons ind bullet))
+            (cond
+             ((ignore-errors (org-list-indent-item-generic 1 t struct)))
+             ((ignore-errors (org-list-indent-item-generic -1 t struct)))
+             (t 'noindent))))))))
+
 (defun orgalist--while-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
-
-(defun orgalist--while-at-empty-item (cmd)
-  "Return CMD when point is at a list item."
-  (when (and (orgalist--at-item-p)
-             (save-excursion
-               (beginning-of-line)
-               (re-search-forward orgalist--item-re)
-               (skip-chars-forward " \t")
-               (eolp)))
-    cmd))
 
 (defun orgalist--while-in-item (cmd)
   "Return CMD when point is in a list item."
@@ -547,10 +577,6 @@ as a piece of advice on `fill-paragraph-function'."
 (defconst orgalist--maybe-cycle-bullet
   '(menu-item "" orgalist-cycle-bullet :filter orgalist--while-at-item))
 
-(defconst orgalist--maybe-cycle-indentation
-  '(menu-item "" orgalist-cycle-indentation
-              :filter orgalist--while-at-empty-item))
-
 (defconst orgalist--maybe-check
   '(menu-item "" orgalist-check-item :filter orgalist--while-at-item))
 
@@ -571,10 +597,6 @@ as a piece of advice on `fill-paragraph-function'."
     (define-key map (kbd "C-c -") orgalist--maybe-cycle-bullet)
     (define-key map (kbd "C-c C-c") orgalist--maybe-check)
     (define-key map (kbd "C-c ^") orgalist--maybe-sort)
-    ;; FIXME: This interacts poorly with other uses of TAB such as
-    ;; doing completion via (setq tab-always-indent 'complete).
-    ;; Maybe we should set indent-line-function instead.
-    (define-key map (kbd "TAB") orgalist--maybe-cycle-indentation)
     map))
 
 (easy-menu-define orgalist--menu
@@ -611,19 +633,18 @@ major modes.
 
 key             binding
 ---             -------
-M-RET           `orgalist-insert-item'
-M-<up>          `orgalist-previous-item'
-M-<down>        `orgalist-next-item'
-M-S-<up>        `orgalist-move-item-up'
-M-S-<down>      `orgalist-move-item-down'
-M-<left>        `orgalist-outdent-item'
-M-<right>       `orgalist-indent-item'
-M-S-<left>      `orgalist-outdent-item-tree'
-M-S-<right>     `orgalist-indent-item-tree'
+M-<RET>         `orgalist-insert-item'
+M-<UP>          `orgalist-previous-item'
+M-<DOWN>        `orgalist-next-item'
+M-S-<UP>        `orgalist-move-item-up'
+M-S-<DOWN>      `orgalist-move-item-down'
+M-<LEFT>        `orgalist-outdent-item'
+M-<RIGHT>       `orgalist-indent-item'
+M-S-<LEFT>      `orgalist-outdent-item-tree'
+M-S-<RIGHT>     `orgalist-indent-item-tree'
 C-c -           `orgalist-cycle-bullet'
 C-c ^           `orgalist-sort-items'
-C-c C-c         `orgalist-check-item'
-TAB             `orgalist-cycle-indentation'"
+C-c C-c         `orgalist-check-item'"
   :lighter " olst"
   (cond
    (orgalist-mode
@@ -637,10 +658,15 @@ TAB             `orgalist-cycle-indentation'"
                   #'orgalist--auto-fill)
     (add-function :before-until
                   (local 'fill-paragraph-function)
-                  #'orgalist--fill-item))
+                  #'orgalist--fill-item)
+    (add-function :before-until
+                  (local 'indent-line-function)
+                  #'orgalist--cycle-indentation))
    (t
     (remove-function (local 'auto-fill-function) #'orgalist--auto-fill)
-    (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item))))
+    (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
+    (remove-function (local 'indent-line-function)
+                     #'orgalist--cycle-indentation))))
 
 
 ;;; Public functions
@@ -704,53 +730,6 @@ the item, so this really moves item trees."
   (interactive)
   (unless (orgalist--at-item-p) (user-error "Not in a list"))
   (orgalist--move-item t))
-
-(defun orgalist-cycle-indentation ()
-  "Cycle levels of indentation of an empty item.
-The first run indents the item, if applicable.  Subsequent runs
-outdent it at meaningful levels in the list.  When done, item is
-put back at its original position with its original bullet."
-  (interactive)
-  (unless (orgalist--at-item-p) (user-error "Not in a list"))
-  (let* ((struct (orgalist--struct))
-         (ind (org-list-get-ind (line-beginning-position) struct))
-         (bullet (org-trim (buffer-substring (line-beginning-position)
-                                             (line-end-position)))))
-    ;; Accept empty items or if cycle has already started.
-    (if (and (not (eq last-command 'orgalist-cycle-indentation))
-             (save-excursion
-               (beginning-of-line)
-               (looking-at orgalist--item-re))
-             (< (match-end 0)
-                (save-excursion
-                  (goto-char (org-list-get-item-end
-                              (line-beginning-position) struct))
-                  (skip-chars-backward " \r\t\n")
-                  (point))))
-        (progn
-          (setq this-command 'identity)
-          (error "Cannot move item"))
-      (setq this-command 'orgalist-cycle-indentation)
-      ;; When in the middle of the cycle, try to outdent first.  If
-      ;; it fails, and point is still at initial position, indent.
-      ;; Else, re-create it at its original position.
-      (if (eq last-command 'orgalist-cycle-indentation)
-          (cond
-           ((ignore-errors (org-list-indent-item-generic -1 t struct)))
-           ((and (= ind (car orgalist--cycling-state))
-                 (ignore-errors (org-list-indent-item-generic 1 t struct))))
-           (t (delete-region (line-beginning-position) (line-end-position))
-              (indent-to-column (car orgalist--cycling-state))
-              (insert (cdr orgalist--cycling-state) " ")
-              ;; Break cycle
-              (setq this-command 'identity)))
-        ;; If a cycle is starting, remember indentation and bullet,
-        ;; then try to indent.  If it fails, try to outdent.
-        (setq orgalist--cycling-state (cons ind bullet))
-        (cond
-         ((ignore-errors (org-list-indent-item-generic 1 t struct)))
-         ((ignore-errors (org-list-indent-item-generic -1 t struct)))
-         (t (user-error "Cannot move item")))))))
 
 (defun orgalist-cycle-bullet ()
   "Cycle through the different itemize/enumerate bullets.
