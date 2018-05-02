@@ -676,7 +676,7 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
-    (add-function :before-until (local 'auto-fill-function)
+    (add-function :before-until (local 'normal-auto-fill-function)
                   #'orgalist--auto-fill)
     (add-function :before-until
                   (local 'fill-paragraph-function)
@@ -685,7 +685,7 @@ C-c C-c         `orgalist-check-item'"
                   (local 'indent-line-function)
                   #'orgalist--cycle-indentation))
    (t
-    (remove-function (local 'auto-fill-function) #'orgalist--auto-fill)
+    (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
     (remove-function (local 'indent-line-function)
                      #'orgalist--cycle-indentation))))
