@@ -648,10 +648,28 @@ This function is meant to be used as a piece of advice on
 
 ;;;###autoload
 (define-minor-mode orgalist-mode
-  "Toggle the minor mode `orgalist-mode'.
+  "Toggle Org-like lists and their relative commands.
 
-This mode is for using Org mode plain lists commands in other
-major modes.
+With a prefix argument ARG, enable Auto Fill mode if ARG is
+positive, and disable it otherwise.  If called from Lisp, enable
+the mode if ARG is omitted or nil.
+
+When Orgalist mode is enabled, any line beginning with \"-\",
+\"+\", \"1.\" or \"a.\" followed by a space starts a list.  You
+can then operate locally on the list, e.g., to insert new items,
+move items or sort them.  See below for details.
+
+Moreover, you can add check-boxes to items
+
+  - [ ] A checkbox, toggled with `C-c C-c'
+
+turn an unordered list into a description list
+
+  - term :: description
+
+and control numbering in an ordered list
+
+  4. [@4] a forced numbered item
 
 key             binding
 ---             -------
