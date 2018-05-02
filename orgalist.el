@@ -525,12 +525,12 @@ This function is meant to be used as a piece of advice on
 `indent-line-function'."
   (when (orgalist--at-item-p)
     (let ((struct (orgalist--struct)))
-      (if (>= (progn (org-match-line orgalist--item-re) (match-end 0))
-              (save-excursion
-                (goto-char (org-list-get-item-end
-                            (line-beginning-position) struct))
-                (skip-chars-backward " \r\t\n")
-                (point)))
+      (if (< (progn (org-match-line orgalist--item-re) (match-end 0))
+             (save-excursion
+               (goto-char (org-list-get-item-end
+                           (line-beginning-position) struct))
+               (skip-chars-backward " \r\t\n")
+               (point)))
           ;; If the item is not empty, do not indent.
           'noindent
         (let ((ind (org-list-get-ind (line-beginning-position) struct))
