@@ -502,9 +502,11 @@ Return nil outside of a list or in a blank line.  This function
 is meant to be used as a piece of advice on both
 `auto-fill-function' and `normal-auto-fill-function'."
   (unless (org-match-line "^[ \t]*$")
-    (let ((item? (orgalist--in-item-p)))
-      (if item? (orgalist--call-in-item fill-function item?)
-        (funcall fill-function)))))
+    (let ((fc (current-fill-column)))
+      (when (and fc (<= fc (current-column)))
+        (let ((item? (orgalist--in-item-p)))
+          (if item? (orgalist--call-in-item fill-function item?)
+            (funcall fill-function)))))))
 
 (defun orgalist--fill-item (justify)
   "Fill item as a paragraph.
