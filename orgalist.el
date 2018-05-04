@@ -493,15 +493,18 @@ move is not possible."
     (org-list-write-struct struct (org-list-parents-alist struct))
     (move-to-column col)))
 
-(defun orgalist--auto-fill ()
+(defun orgalist--auto-fill (fill-function)
   "Auto fill function.
-Return nil outside of a list or in a blank line.  This function is
-meant to be used as a piece of advice on `auto-fill-function'."
+
+FILL-FUNCTION is the regular function used to perform auto-fill.
+
+Return nil outside of a list or in a blank line.  This function
+is meant to be used as a piece of advice on both
+`auto-fill-function' and `normal-auto-fill-function'."
   (unless (org-match-line "^[ \t]*$")
     (let ((item? (orgalist--in-item-p)))
-      (when item?
-        (orgalist--call-in-item normal-auto-fill-function item?)
-        t))))
+      (if item? (orgalist--call-in-item fill-function item?)
+        (funcall fill-function)))))
 
 (defun orgalist--fill-item (justify)
   "Fill item as a paragraph.
@@ -721,18 +724,25 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
     (add-function :before-until
-                  (local 'normal-auto-fill-function)
-                  #'orgalist--auto-fill)
-    (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
     (add-function :before-until
                   (local 'indent-line-function)
-                  #'orgalist--indent-line))
+                  #'orgalist--indent-line)
+    ;; If Auto fill mode is not enabled when we initialize Orgalist
+    ;; mode, `auto-fill-function' is nil and we just advise
+    ;; `normal-auto-fill-function'.
+    (add-function :around
+                  (local 'normal-auto-fill-function)
+                  #'orgalist--auto-fill)
+    (when auto-fill-function
+      (add-function :around (local 'auto-fill-function) #'orgalist--auto-fill)))
    (t
-    (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
-    (remove-function (local 'indent-line-function) #'orgalist--indent-line))))
+    (remove-function (local 'indent-line-function) #'orgalist--indent-line)
+    (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
+    (when auto-fill-function
+      (remove-function (local 'auto-fill-function) #'orgalist--auto-fill)))))
 
 
 ;;; Public functions
