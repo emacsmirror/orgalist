@@ -515,15 +515,14 @@ as a piece of advice on `fill-paragraph-function'."
       (orgalist--call-in-item #'fill-paragraph item? justify)
       t)))
 
-(defun orgalist--cycle-indentation ()
-  "Cycle levels of indentation of an empty item.
-
-The first run indents the item, if applicable.  Subsequent runs
-outdent it at meaningful levels in the list.
-
+(defun orgalist--indent-line ()
+  "Indent current line in an item.
 This function is meant to be used as a piece of advice on
 `indent-line-function'."
-  (when (orgalist--at-item-p)
+  (cond
+   ;; At an item, try to cycle indentation if it is empty or prevent
+   ;; any indentation.
+   ((orgalist--at-item-p)
     (let ((struct (orgalist--struct)))
       (if (< (progn (org-match-line orgalist--item-re) (match-end 0))
              (save-excursion
@@ -531,32 +530,59 @@ This function is meant to be used as a piece of advice on
                            (line-beginning-position) struct))
                (skip-chars-backward " \r\t\n")
                (point)))
-          ;; If the item is not empty, do not indent.
+          ;; If the item is not empty, do not cycle indentation.
           'noindent
-        (let ((ind (org-list-get-ind (line-beginning-position) struct))
-              (bullet (org-trim (buffer-substring (line-beginning-position)
-                                                  (line-end-position)))))
-          (setq this-command 'orgalist--cycle-indentation)
-          ;; When in the middle of the cycle, try to outdent first.  If
-          ;; it fails, and point is still at initial position, indent.
-          ;; Else, re-create it at its original position.
-          (if (eq last-command 'orgalist--cycle-indentation)
-              (cond
-               ((ignore-errors (org-list-indent-item-generic -1 t struct)))
-               ((and (= ind (car orgalist--cycling-state))
-                     (ignore-errors (org-list-indent-item-generic 1 t struct))))
-               (t (delete-region (line-beginning-position) (line-end-position))
-                  (indent-to-column (car orgalist--cycling-state))
-                  (insert (cdr orgalist--cycling-state) " ")
-                  ;; Break cycle.
-                  (setq this-command 'identity)))
-            ;; If a cycle is starting, remember indentation and bullet,
-            ;; then try to indent.  If it fails, try to outdent.
-            (setq orgalist--cycling-state (cons ind bullet))
-            (cond
-             ((ignore-errors (org-list-indent-item-generic 1 t struct)))
-             ((ignore-errors (org-list-indent-item-generic -1 t struct)))
-             (t 'noindent))))))))
+        (orgalist--cycle-indentation struct)
+        t)))
+   ;; Within an item, indent according to the current bullet.
+   ((let ((item? (orgalist--in-item-p)))
+      (and item?
+           (let ((column (save-excursion
+                           (goto-char item?)
+                           (looking-at orgalist--item-re)
+                           (goto-char (match-end 1))
+                           (skip-chars-backward " \t")
+                           (1+ (current-column)))))
+             ;; Preserve current column.
+             (if (<= (current-column) (current-indentation))
+                 (indent-line-to column)
+               (save-excursion (indent-line-to column)))
+             t))))
+   (t nil)))
+
+(defun orgalist--cycle-indentation (struct)
+  "Cycle levels of indentation of an empty item.
+
+STRUCT is the list structure, as returned by `orgalist--struct'.
+
+The first run indents the item, if applicable.  Subsequent runs
+outdent it at meaningful levels in the list.
+
+The function assumes point is at an empty item."
+  (let* ((ind (org-list-get-ind (line-beginning-position) struct))
+         (bullet (org-trim (buffer-substring (line-beginning-position)
+                                             (line-end-position)))))
+    (setq this-command 'orgalist--cycle-indentation)
+    ;; When in the middle of the cycle, try to outdent first.  If it
+    ;; fails, and point is still at initial position, indent.  Else,
+    ;; re-create it at its original position.
+    (if (eq last-command 'orgalist--cycle-indentation)
+        (cond
+         ((ignore-errors (org-list-indent-item-generic -1 t struct)))
+         ((and (= ind (car orgalist--cycling-state))
+               (ignore-errors (org-list-indent-item-generic 1 t struct))))
+         (t (delete-region (line-beginning-position) (line-end-position))
+            (indent-to-column (car orgalist--cycling-state))
+            (insert (cdr orgalist--cycling-state) " ")
+            ;; Break cycle.
+            (setq this-command 'identity)))
+      ;; If a cycle is starting, remember indentation and bullet, then
+      ;; try to indent.  If it fails, try to outdent.
+      (setq orgalist--cycling-state (cons ind bullet))
+      (cond
+       ((ignore-errors (org-list-indent-item-generic 1 t struct)))
+       ((ignore-errors (org-list-indent-item-generic -1 t struct)))
+       (t (user-error "No other meaningful indentation level"))))))
 
 (defun orgalist--while-at-item (cmd)
   "Return CMD when point is at a list item."
@@ -694,19 +720,19 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
-    (add-function :before-until (local 'normal-auto-fill-function)
+    (add-function :before-until
+                  (local 'normal-auto-fill-function)
                   #'orgalist--auto-fill)
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
     (add-function :before-until
                   (local 'indent-line-function)
-                  #'orgalist--cycle-indentation))
+                  #'orgalist--indent-line))
    (t
     (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
-    (remove-function (local 'indent-line-function)
-                     #'orgalist--cycle-indentation))))
+    (remove-function (local 'indent-line-function) #'orgalist--indent-line))))
 
 
 ;;; Public functions
