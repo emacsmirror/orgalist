@@ -546,7 +546,24 @@ This function is meant to be used as a piece of advice on
                            (goto-char (match-end 1))
                            (skip-chars-backward " \t")
                            (1+ (current-column)))))
-             ;; Preserve current column.
+             (if (<= (current-column) (current-indentation))
+                 (indent-line-to column)
+               (save-excursion (indent-line-to column)))
+             t))))
+   ;; Right after a list, indent like the first item in the list.
+   ((let ((struct? (save-excursion
+                     (and (= 0 (forward-line -1))
+                          (looking-at-p "[ \t]*$")
+                          (progn
+                            (skip-chars-backward " \r\t\n")
+                            (let ((item? (orgalist--in-item-p)))
+                              (and item?
+                                   (goto-char item?)
+                                   (orgalist--struct))))))))
+      (and struct?
+           (let ((column (save-excursion
+                           (goto-char (org-list-get-top-point struct?))
+                           (current-indentation))))
              (if (<= (current-column) (current-indentation))
                  (indent-line-to column)
                (save-excursion (indent-line-to column)))
