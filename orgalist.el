@@ -598,11 +598,11 @@ The function assumes point is at an empty item."
        ((ignore-errors (org-list-indent-item-generic -1 t struct)))
        (t (user-error "No other meaningful indentation level"))))))
 
-(defun orgalist--while-at-item (cmd)
+(defun orgalist--when-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
 
-(defun orgalist--while-at-empty-item (cmd)
+(defun orgalist--when-at-empty-item (cmd)
   "Return CMD when point is at an empty list item."
   (when (and (orgalist--at-item-p)
              (org-match-line orgalist--item-re)
@@ -617,7 +617,7 @@ The function assumes point is at an empty item."
                           (>= reference-ind (current-indentation)))))))
     cmd))
 
-(defun orgalist--while-in-item (cmd)
+(defun orgalist--when-in-item (cmd)
   "Return CMD when point is in a list item."
   (when (orgalist--in-item-p) cmd))
 
@@ -625,45 +625,45 @@ The function assumes point is at an empty item."
 ;;; Bindings and menu
 
 (defconst orgalist--maybe-previous
-  '(menu-item "" orgalist-previous-item :filter orgalist--while-in-item))
+  '(menu-item "" orgalist-previous-item :filter orgalist--when-in-item))
 
 (defconst orgalist--maybe-next
-  '(menu-item "" orgalist-next-item :filter orgalist--while-in-item))
+  '(menu-item "" orgalist-next-item :filter orgalist--when-in-item))
 
 (defconst orgalist--maybe-insert
-  '(menu-item "" orgalist-insert-item :filter orgalist--while-in-item))
+  '(menu-item "" orgalist-insert-item :filter orgalist--when-in-item))
 
 (defconst orgalist--maybe-move-up
-  '(menu-item "" orgalist-move-item-up :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-move-item-up :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-move-down
-  '(menu-item "" orgalist-move-item-down :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-move-item-down :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-outdent
-  '(menu-item "" orgalist-outdent-item :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-outdent-item :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-indent
-  '(menu-item "" orgalist-indent-item :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-indent-item :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-outdent-tree
-  '(menu-item "" orgalist-outdent-item-tree :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-outdent-item-tree :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-indent-tree
-  '(menu-item "" orgalist-indent-item-tree :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-indent-item-tree :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-cycle-bullet
-  '(menu-item "" orgalist-cycle-bullet :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-cycle-bullet :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-check
-  '(menu-item "" orgalist-check-item :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-check-item :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-sort
-  '(menu-item "" orgalist-sort-items :filter orgalist--while-at-item))
+  '(menu-item "" orgalist-sort-items :filter orgalist--when-at-item))
 
 (defconst orgalist--maybe-cycle-indentation
   '(menu-item ""
               orgalist--cycle-indentation
-              :filter orgalist--while-at-empty-item))
+              :filter orgalist--when-at-empty-item))
 
 (defconst orgalist-mode-map
   (let ((map (make-sparse-keymap)))
