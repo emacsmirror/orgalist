@@ -112,6 +112,7 @@
 ;;; Code:
 
 (require 'easymenu)
+(require 'nadvice)
 (require 'org-macs)
 (require 'org-list)
 
