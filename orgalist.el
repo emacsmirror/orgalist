@@ -778,13 +778,27 @@ C-c C-c         `orgalist-check-item'"
                   (local 'normal-auto-fill-function)
                   #'orgalist--auto-fill)
     (when auto-fill-function
-      (add-function :around (local 'auto-fill-function) #'orgalist--auto-fill)))
+      (add-function :around (local 'auto-fill-function) #'orgalist--auto-fill))
+    ;; FIXME: Workaround bug#31361.
+    (unless (advice-member-p 'orgalist-fix-bug:31361 'indent-according-to-mode)
+      (advice-add 'indent-according-to-mode
+                  :around (lambda (old)
+                            "Workaround bug#31361."
+                            (let ((indent-line-function
+                                   (advice--cd*r indent-line-function)))
+                              (funcall old)))
+                  '((name . orgalist-fix-bug:31361)))))
    (t
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
     (remove-function (local 'indent-line-function) #'orgalist--indent-line)
     (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
     (when auto-fill-function
-      (remove-function (local 'auto-fill-function) #'orgalist--auto-fill)))))
+      (remove-function (local 'auto-fill-function) #'orgalist--auto-fill))
+    ;; FIXME: When there is no Orgalist minor mode active in any
+    ;; buffer, remove workaround for bug#31361.
+    (unless (cl-some (lambda (b) (with-current-buffer b orgalist-mode))
+                     (buffer-list))
+      (advice-remove 'indent-according-to-mode 'orgalist-fix-bug:31361)))))
 
 
 ;;; Public functions
