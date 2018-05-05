@@ -48,7 +48,10 @@
 
 ;; To start a list, type "- <SPC>" or "1 . <SPC>", then write the
 ;; contents of the item.  To create a new item, use M-<RET>.  If it
-;; should be a child of the previous item, use <TAB> or M-<RIGHT>.
+;; should be a child of the previous item, use <TAB> (this is
+;; a shortcut for M-<RIGHT> and M-<LEFT> only on empty items), or
+;; M-<RIGHT>.
+
 ;; For example, "- <SPC> i t e m M-<RET> <TAB> c h i l d" produces:
 
 ;;     - item
@@ -527,18 +530,7 @@ This function is meant to be used as a piece of advice on
   (cond
    ;; At an item, try to cycle indentation if it is empty or prevent
    ;; any indentation.
-   ((orgalist--at-item-p)
-    (let ((struct (orgalist--struct)))
-      (if (< (progn (org-match-line orgalist--item-re) (match-end 0))
-             (save-excursion
-               (goto-char (org-list-get-item-end
-                           (line-beginning-position) struct))
-               (skip-chars-backward " \r\t\n")
-               (point)))
-          ;; If the item is not empty, do not cycle indentation.
-          t
-        (orgalist--cycle-indentation struct)
-        t)))
+   ((orgalist--at-item-p) t)
    ;; Within an item, indent according to the current bullet.
    ((let ((item? (orgalist--in-item-p)))
       (and item?
@@ -572,16 +564,16 @@ This function is meant to be used as a piece of advice on
              t))))
    (t nil)))
 
-(defun orgalist--cycle-indentation (struct)
+(defun orgalist--cycle-indentation ()
   "Cycle levels of indentation of an empty item.
-
-STRUCT is the list structure, as returned by `orgalist--struct'.
 
 The first run indents the item, if applicable.  Subsequent runs
 outdent it at meaningful levels in the list.
 
 The function assumes point is at an empty item."
-  (let* ((ind (org-list-get-ind (line-beginning-position) struct))
+  (interactive)
+  (let* ((struct (orgalist--struct))
+         (ind (org-list-get-ind (line-beginning-position) struct))
          (bullet (org-trim (buffer-substring (line-beginning-position)
                                              (line-end-position)))))
     (setq this-command 'orgalist--cycle-indentation)
@@ -609,6 +601,21 @@ The function assumes point is at an empty item."
 (defun orgalist--while-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (orgalist--at-item-p) cmd))
+
+(defun orgalist--while-at-empty-item (cmd)
+  "Return CMD when point is at an empty list item."
+  (when (and (orgalist--at-item-p)
+             (org-match-line orgalist--item-re)
+             (let ((start (line-beginning-position))
+                   (reference-ind (current-indentation))
+                   (end (line-beginning-position 4)))
+               (save-excursion
+                 (goto-char (match-end 0))
+                 (skip-chars-forward " \r\t\n" end)
+                 (or (= end (point))
+                     (and (/= start (line-beginning-position))
+                          (>= reference-ind (current-indentation)))))))
+    cmd))
 
 (defun orgalist--while-in-item (cmd)
   "Return CMD when point is in a list item."
@@ -653,6 +660,11 @@ The function assumes point is at an empty item."
 (defconst orgalist--maybe-sort
   '(menu-item "" orgalist-sort-items :filter orgalist--while-at-item))
 
+(defconst orgalist--maybe-cycle-indentation
+  '(menu-item ""
+              orgalist--cycle-indentation
+              :filter orgalist--while-at-empty-item))
+
 (defconst orgalist-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "M-<up>") orgalist--maybe-previous)
@@ -667,6 +679,16 @@ The function assumes point is at an empty item."
     (define-key map (kbd "C-c -") orgalist--maybe-cycle-bullet)
     (define-key map (kbd "C-c C-c") orgalist--maybe-check)
     (define-key map (kbd "C-c ^") orgalist--maybe-sort)
+    ;; When an item is empty, we really want to hijack <TAB> binding
+    ;; so that the key can be used to cycle item level.
+    ;;
+    ;; Although it contains "indentation", this is not tied to, e.g.,
+    ;; `indent-line-function'.  For example, consider
+    ;; `reindent-then-newline-and-indent'.  When called on an empty
+    ;; item, it would cycle its indentation even though <RET> was
+    ;; pressed.  This is not desirable.
+    (define-key map (kbd "<tab>") orgalist--maybe-cycle-indentation)
+    (define-key map (kbd "TAB") orgalist--maybe-cycle-indentation)
     map))
 
 (easy-menu-define orgalist--menu
