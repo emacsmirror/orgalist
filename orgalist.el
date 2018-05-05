@@ -785,9 +785,10 @@ C-c C-c         `orgalist-check-item'"
       (advice-add 'indent-according-to-mode
                   :around (lambda (old)
                             "Workaround bug#31361."
-                            (let ((indent-line-function
-                                   (advice--cd*r indent-line-function)))
-                              (funcall old)))
+                            (or (orgalist--indent-line)
+                                (let ((indent-line-function
+                                       (advice--cd*r indent-line-function)))
+                                  (funcall old))))
                   '((name . orgalist-fix-bug:31361)))))
    (t
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
