@@ -536,7 +536,7 @@ This function is meant to be used as a piece of advice on
                (skip-chars-backward " \r\t\n")
                (point)))
           ;; If the item is not empty, do not cycle indentation.
-          'noindent
+          t
         (orgalist--cycle-indentation struct)
         t)))
    ;; Within an item, indent according to the current bullet.
