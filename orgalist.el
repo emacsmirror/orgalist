@@ -1026,7 +1026,11 @@ for this list."
               (match-beginning 0)))
            (plain-list (save-excursion
                          (goto-char top-point)
-                         (org-list-to-lisp))))
+                         ;; FIXME: Compatibility layer.  Remove when
+                         ;; we require at least Emacs 26.1.
+                         (funcall (if (fboundp 'org-list-to-lisp)
+                                      'org-list-to-lisp)
+                                  'org-list-parse-list))))
       (unless (fboundp transform)
         (error "No such transformation function %s" transform))
       (let ((txt (funcall transform plain-list)))
