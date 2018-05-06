@@ -113,6 +113,7 @@
 
 (require 'easymenu)
 (require 'nadvice)
+(require 'org)
 (require 'org-macs)
 (require 'org-list)
 
