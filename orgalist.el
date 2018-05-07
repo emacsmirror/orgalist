@@ -6,7 +6,7 @@
 ;; Maintainer: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Keywords: convenience
 ;; Package-Requires: ((emacs "24.4"))
-;; Version: 1.6
+;; Version: 1.7
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
