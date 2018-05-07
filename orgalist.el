@@ -767,6 +767,7 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
+    (setq-local org-plain-list-ordered-item-terminator ?.)
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
