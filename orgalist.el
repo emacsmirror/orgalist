@@ -774,13 +774,16 @@ C-c C-c         `orgalist-check-item'"
    (orgalist-mode
     (when (derived-mode-p 'org-mode)
       (user-error "Cannot activate Orgalist mode in an Org buffer"))
+    (setq-local org-blank-before-new-entry
+                `((plain-list-item . ,orgalist-separated-items)))
     (setq-local org-list-allow-alphabetical t)
     (setq-local org-list-automatic-rules nil)
     (setq-local org-list-demote-modify-bullet nil)
+    (setq-local org-list-description-max-indent 5)
+    (setq-local org-list-indent-offset 0)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
+    (setq-local org-list-use-circular-motion nil)
     (setq-local org-plain-list-ordered-item-terminator ?.)
-    (setq-local org-blank-before-new-entry
-                `((plain-list-item . ,orgalist-separated-items)))
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
