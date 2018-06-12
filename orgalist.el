@@ -148,6 +148,17 @@ before it is checked too."
   :type 'boolean
   :safe #'booleanp)
 
+(defcustom orgalist-separated-items 'auto
+  "When non-nil, insert an empty line before every new item.
+When set to `auto', guess if an empty line is necessary according
+to the other items in the list, or default to none if there is
+not enough information."
+  :group 'orgalist
+  :type '(choice (cons :tag "None" nil)
+                 (cons :tag "Always" t)
+                 (cons :tag "Auto" auto))
+  :safe #'symbolp)
+
 (defcustom orgalist-radio-list-templates
   '((latex-mode "% BEGIN RECEIVE ORGLST %n
 % END RECEIVE ORGLST %n
@@ -768,6 +779,8 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-demote-modify-bullet nil)
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
     (setq-local org-plain-list-ordered-item-terminator ?.)
+    (setq-local org-blank-before-new-entry
+                `((plain-list-item . ,orgalist-separated-items)))
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
