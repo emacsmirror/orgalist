@@ -215,13 +215,16 @@ Otherwise, return nil."
 (defvar orgalist--menu nil
   "The Orgalist menu.")
 
+(defconst orgalist--bullet-re
+  "\\(?:[-+]\\|\\(?:[0-9]+\\|[A-Za-z]\\)\\.\\)\\(?:[ \t]+\\|$\\)"
+  "Match an item bullet.")
+
 (defconst orgalist--item-re
-  (concat
-   "^[ \t]*\\(\\(?:[-+]\\|\\(?:[0-9]+\\|[A-Za-z]\\)\\.\\)\\(?:[ \t]+\\|$\\)\\)"
-   "\\(?:\\[@\\([0-9]+\\|[A-Za-z]\\)\\][ \t]*\\)?"
-   "\\(?:\\(\\[[- xX]\\]\\)\\(?:[ \t]+\\|$\\)\\)?"
-   "\\(?:\\(.*\\)[ \t]+::\\(?:[ \t]+\\|$\\)\\)?")
-  "Match a list item and puts everything into groups:
+  (concat (format "^[ \t]*\\(%s\\)" orgalist--bullet-re)
+          "\\(?:\\[@\\([0-9]+\\|[A-Za-z]\\)\\][ \t]*\\)?"
+          "\\(?:\\(\\[[- xX]\\]\\)\\(?:[ \t]+\\|$\\)\\)?"
+          "\\(?:\\(.*\\)[ \t]+::\\(?:[ \t]+\\|$\\)\\)?")
+  "Match a list item and put everything into groups:
 group 1: bullet
 group 2: counter
 group 3: checkbox
@@ -611,6 +614,14 @@ The function assumes point is at an empty item."
        ((ignore-errors (org-list-indent-item-generic -1 t struct)))
        (t (user-error "No other meaningful indentation level"))))))
 
+(defun orgalist--item-nobreak-p ()
+  "Non-nil when a newline at point would create a new item."
+  (pcase (orgalist--boundaries)
+    (`(,min . ,max)
+     (and (<= min (point))
+          (> max (point))
+          (looking-at-p orgalist--bullet-re)))))
+
 (defun orgalist--when-at-item (cmd)
   "Return CMD when point is at a list item."
   (when (and orgalist-mode (orgalist--at-item-p)) cmd))
@@ -798,6 +809,8 @@ C-c C-c         `orgalist-check-item'"
                   #'orgalist--auto-fill)
     (when auto-fill-function
       (add-function :around (local 'auto-fill-function) #'orgalist--auto-fill))
+    ;; Prevent Auto fill mode from creating new items.
+    (push 'orgalist--item-nobreak-p fill-nobreak-predicate)
     ;; FIXME: Workaround bug#31361.
     (unless (advice-member-p 'orgalist-fix-bug:31361 'indent-according-to-mode)
       (advice-add 'indent-according-to-mode
@@ -811,6 +824,8 @@ C-c C-c         `orgalist-check-item'"
    (t
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
     (remove-function (local 'indent-line-function) #'orgalist--indent-line)
+    (setq fill-nobreak-predicate
+          (delq 'orgalist--item-nobreak-p fill-nobreak-predicate))
     (remove-function (local 'normal-auto-fill-function) #'orgalist--auto-fill)
     (when auto-fill-function
       (remove-function (local 'auto-fill-function) #'orgalist--auto-fill))
