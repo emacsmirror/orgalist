@@ -580,6 +580,25 @@ This function is meant to be used as a piece of advice on
              t))))
    (t nil)))
 
+(defun orgalist--fill-forward-wrapper (fill-forward-function &rest args)
+  "Fill forward paragraph wrapper.
+
+FILL-FORWARD-FUNCTION is the regular function used to move over
+paragraphs by the filling code.
+
+This function is meant to be used as a piece of advice on
+`fill-forward-paragraph-function'."
+  (if (save-excursion
+        (and (re-search-forward orgalist--bullet-re nil t)
+             (pcase (orgalist--boundaries)
+               (`(,min . ,max)
+                (and (<= min (point))
+                     (>= max (point)))))))
+      (let ((paragraph-start
+             (concat "[ \t]*" orgalist--bullet-re "\\|" paragraph-start)))
+        (apply fill-forward-function args))
+    (apply fill-forward-function args)))
+
 (defun orgalist--cycle-indentation ()
   "Cycle levels of indentation of an empty item.
 
@@ -794,6 +813,8 @@ C-c C-c         `orgalist-check-item'"
     (setq-local org-list-two-spaces-after-bullet-regexp nil)
     (setq-local org-list-use-circular-motion nil)
     (setq-local org-plain-list-ordered-item-terminator ?.)
+    (add-function :around (local 'fill-forward-paragraph-function)
+                  #'orgalist--fill-forward-wrapper)
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
@@ -821,6 +842,8 @@ C-c C-c         `orgalist-check-item'"
                                   (funcall old))))
                   '((name . orgalist-fix-bug:31361)))))
    (t
+    (remove-function (local 'fill-forward-paragraph-function)
+                     #'orgalist--fill-forward-wrapper)
     (remove-function (local 'fill-paragraph-function) #'orgalist--fill-item)
     (remove-function (local 'indent-line-function) #'orgalist--indent-line)
     (setq fill-nobreak-predicate
