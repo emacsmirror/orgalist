@@ -260,11 +260,11 @@ Return nil if Orgalist mode is not active."
 
 (defun orgalist--at-item-p ()
   "Non-nil if point is at an item."
-  (and (orgalist--boundaries)            ;check context
-       (save-excursion
-         (beginning-of-line)
-         (looking-at-p
-          "[ \t]*\\(?:[-+]\\|\\(?:[a-zA-Z]\\|[0-9]+\\)\\.\\)\\([ \t]\\|$\\)"))))
+  (pcase (orgalist--boundaries)
+    (`(,min . ,max)
+     (and (<= min (point))
+          (>= max (point))
+          (org-match-line (concat "[ \t]*" orgalist--bullet-re))))))
 
 (defun orgalist--in-item-p ()
   "Return item beginning position when in a plain list, nil otherwise."
