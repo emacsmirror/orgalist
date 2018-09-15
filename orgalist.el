@@ -624,12 +624,11 @@ The function assumes point is at an empty item."
 
 (defun orgalist--when-at-item (cmd)
   "Return CMD when point is at a list item."
-  (when (and orgalist-mode (orgalist--at-item-p)) cmd))
+  (when (orgalist--at-item-p) cmd))
 
 (defun orgalist--when-at-empty-item (cmd)
   "Return CMD when point is at an empty list item."
-  (when (and orgalist-mode
-             (orgalist--at-item-p)
+  (when (and (orgalist--at-item-p)
              (org-match-line orgalist--item-re)
              (let ((start (line-beginning-position))
                    (reference-ind (current-indentation))
@@ -644,7 +643,7 @@ The function assumes point is at an empty item."
 
 (defun orgalist--when-in-item (cmd)
   "Return CMD when point is in a list item."
-  (when (and orgalist-mode (orgalist--in-item-p)) cmd))
+  (when (orgalist--in-item-p) cmd))
 
 
 ;;; Bindings and menu
