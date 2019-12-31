@@ -818,6 +818,12 @@ C-c C-c         `orgalist-check-item'"
     (add-function :before-until
                   (local 'fill-paragraph-function)
                   #'orgalist--fill-item)
+    ;; Unless `indent-line-function' is buffer-local before it is
+    ;; advised with `add-function', the workaround for bug#31361 below
+    ;; will not work, as (advice--cd*r indent-line-function) will not
+    ;; compare `eq' to `indent-relative' in
+    ;; `indent-according-to-mode'.
+    (make-local-variable 'indent-line-function)
     (add-function :before-until
                   (local 'indent-line-function)
                   #'orgalist--indent-line)
