@@ -1,6 +1,6 @@
 ;;; orgalist.el --- Manage Org-like lists in non-Org buffers  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2017, 2018  Free Software Foundation, Inc.
+;; Copyright (C) 2017-2020  Free Software Foundation, Inc.
 
 ;; Author: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Maintainer: Nicolas Goaziou <mail@nicolasgoaziou.fr>
