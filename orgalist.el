@@ -240,8 +240,7 @@ group 4: description tag")
   "Call function FUN with buffer narrowed to item starting at POS.
 Call function with ARGUMENTS.  Return the value FUN returns."
   (let* ((struct (save-excursion (goto-char pos) (orgalist--struct)))
-         (next (or (org-list-has-child-p pos struct)
-                   (org-list-get-item-end pos struct)))
+         (next (org-list-has-child-p pos struct))
          (fill-prefix
           (make-string (+ (length (org-list-get-bullet pos struct))
                           (org-list-get-ind pos struct))
