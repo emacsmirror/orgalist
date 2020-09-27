@@ -251,16 +251,36 @@ group 4: description tag")
 
 (defun orgalist--call-in-item (fun pos &rest arguments)
   "Call function FUN with buffer narrowed to item starting at POS.
-Call function with ARGUMENTS.  Return the value FUN returns."
-  (let* ((struct (save-excursion (goto-char pos) (orgalist--struct)))
-         (next (org-list-get-item-end pos struct))
-         (fill-prefix
-          (make-string (+ (length (org-list-get-bullet pos struct))
-                          (org-list-get-ind pos struct))
-                       ?\s)))
+
+Call function with ARGUMENTS.  Return the value FUN returns.
+
+Buffer is narrowed to the surrounding part of the item which
+doesn't include any sub-item.  Wrap `fill-prefix', set to the
+indentation of the current item, before calling FUN."
+  (let* ((struct (org-with-point-at pos (orgalist--struct))))
     (save-restriction
-      (narrow-to-region pos next)
-      (apply fun arguments))))
+      ;; Narrow to the part before first child, if any, or between two
+      ;; consecutive items.
+      (let ((children (org-list-get-children
+                       pos struct (org-list-parents-alist struct)))
+            start end)
+        (catch :exit
+          (dolist (child children)
+            (cond
+             ((> (point) child)
+              (setq start (org-list-get-item-end child struct)))
+             ((< (point) child)
+              (setq end child)
+              (throw :exit t))
+             (t
+              (error "Point does not belong directly to item %s" pos)))))
+        (narrow-to-region (or start pos)
+                          (or end (org-list-get-item-end pos struct))))
+      (let ((fill-prefix
+             (make-string (+ (length (org-list-get-bullet pos struct))
+                             (org-list-get-ind pos struct))
+                          ?\s)))
+        (apply fun arguments)))))
 
 (defun orgalist--boundaries ()
   "Return buffer boundaries, as a cons cell, where lists are acceptable.
