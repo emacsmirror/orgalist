@@ -880,12 +880,12 @@ C-c C-c         `orgalist-check-item'"
     ;; FIXME: Workaround bug#31361.
     (unless (advice-member-p 'orgalist-fix-bug:31361 'indent-according-to-mode)
       (advice-add 'indent-according-to-mode
-                  :around (lambda (old)
+                  :around (lambda (old &rest r)
                             "Workaround bug#31361."
                             (or (orgalist--indent-line)
                                 (let ((indent-line-function
                                        (advice--cd*r indent-line-function)))
-                                  (funcall old))))
+                                  (funcall old r))))
                   '((name . orgalist-fix-bug:31361)))))
    (t
     (remove-function (local 'fill-forward-paragraph-function)
