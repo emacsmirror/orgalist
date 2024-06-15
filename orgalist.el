@@ -5,7 +5,7 @@
 ;; Author: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Maintainer: Nicolas Goaziou <mail@nicolasgoaziou.fr>
 ;; Keywords: convenience
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "26.1"))
 ;; Version: 1.14
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -1126,11 +1126,7 @@ for this list."
               (match-beginning 0)))
            (plain-list (save-excursion
                          (goto-char top-point)
-                         ;; FIXME: Compatibility layer.  Remove when
-                         ;; we require at least Emacs 26.1.
-                         (funcall (if (fboundp 'org-list-to-lisp)
-                                      'org-list-to-lisp)
-                                  'org-list-parse-list))))
+                         (funcall 'org-list-to-lisp))))
       (unless (fboundp transform)
         (error "No such transformation function %s" transform))
       (let ((txt (funcall transform plain-list)))
