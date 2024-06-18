@@ -986,8 +986,9 @@ This cycle the entire list level through the sequence:
            (bullet-list
             (append '("-" "+")
                     ;; Description items cannot be numbered.
-                    (unless (org-at-item-description-p) '("1."))
-                    (unless (org-at-item-description-p) '("a."))))
+                    (let ((line (buffer-substring (point) (line-end-position))))
+                      (and (not (string-match "::" line))
+                           '("1." "a.")))))
            (new (or (cadr (member current bullet-list))
                     (car bullet-list))))
       ;; Use a short variation of `org-list-write-struct' as there's
@@ -1124,9 +1125,15 @@ for this list."
               (re-search-backward "#\\+ORGLST" nil t)
               (re-search-forward (org-item-beginning-re) bottom-point t)
               (match-beginning 0)))
-           (plain-list (save-excursion
-                         (goto-char top-point)
-                         (funcall 'org-list-to-lisp))))
+           (plain-list
+            (save-excursion
+              (goto-char top-point)
+              ;; `org-list-to-lisp' calls `org-list-struct', which is
+              ;; only available in an Org buffer.  Replace it with
+              ;; `orgalist--struct'.
+              (cl-letf (((symbol-function #'org-list-struct)
+                         (symbol-function #'orgalist--struct)))
+                (org-list-to-lisp)))))
       (unless (fboundp transform)
         (error "No such transformation function %s" transform))
       (let ((txt (funcall transform plain-list)))
